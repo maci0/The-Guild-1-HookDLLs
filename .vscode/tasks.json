@@ -20,7 +20,7 @@
           "kernel32.lib",
           // DEF und Output
           "/DEF:${workspaceFolder}\\docs\\kernel32.def",
-          "/OUT:${workspaceFolder}\\release\\Server\\hook_kernel32.dll"
+          "/OUT:${workspaceFolder}\\release\\win32_release\\Server\\hook_kernel32.dll"
       ],
       "options": {
         "cwd": "${workspaceFolder}"
@@ -44,7 +44,7 @@
           "Shlwapi.lib",
           "User32.lib",
           "/DEF:${workspaceFolder}\\docs\\ws2_32.def",
-          "/OUT:${workspaceFolder}\\release\\Server\\hook_ws2_32.dll"
+          "/OUT:${workspaceFolder}\\release\\win32_release\\Server\\hook_ws2_32.dll"
       ],
       "options": {
         "cwd": "${workspaceFolder}"
@@ -65,7 +65,7 @@
           "MinHook.x86.lib",
           "Shlwapi.lib",
           "legacy_stdio_definitions.lib",
-    "/OUT:release\\Server\\hook_server.dll"
+    "/OUT:${workspaceFolder}\\release\\win32_release\\Server\\hook_server.dll"
   ],
   "options": { "cwd": "${workspaceFolder}" },
   "problemMatcher": ["$msCompile"]
