@@ -109,6 +109,7 @@
       ],
       "options": { "cwd": "${workspaceFolder}/build" },
       "group": { "kind": "build" },
+
       "problemMatcher": ["$msCompile"]
     },
     {

@@ -23,13 +23,18 @@ static pF3720_t  real_F3720  = NULL;
 // -----------------------------------------------------------------------------
 // Unsere Detour
 
-// 1) High-Level-Receive: bei negativem Return 0 zurückgeben
+// 1) High-Level-Receive: nur anwenden, wenn totalLen > 3
 static int WINAPI detour_F3720(int *ctx, int received, int totalLen) {
     int ret = real_F3720(ctx, received, totalLen);
-    LOG("[SERVER HOOK] detour_F3720 called, ret=%d\n", ret);
-    if (ret < 0) {
-        LOG("[SERVER HOOK] detour_F3720 adjusted negative to 0\n");
+    LOG("[SERVER HOOK] detour_F3720 called, totalLen=%d, ret=%d\n", totalLen, ret);
+    if (totalLen > 3 && ret < 0) {
+        LOG("[SERVER HOOK] detour_F3720 error & length>3 -> clearing ctx[0xE] & return 0\n");
+        ctx[0xE] = 0;
         return 0;
+    }
+    if (ctx[0xE]<0){
+        LOG("[SERVER HOOK] detour_F3720 error & length>3 -> clearing ctx[0xE] & return output\n");
+        ctx[0xE] = 0;
     }
     return ret;
 }

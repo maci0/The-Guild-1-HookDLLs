@@ -33,7 +33,6 @@ static void initServerModuleRange(void) {
     if (GetModuleInformation(GetCurrentProcess(), hServ, &mi, sizeof(mi))) {
         serverBase = (uintptr_t)mi.lpBaseOfDll;
         serverSize = (size_t)mi.SizeOfImage;
-        //LOG("[HOOK] server.dll at %p size %zu\n", (void*)mi.lpBaseOfDll, mi.SizeOfImage);
     }
 }
 
@@ -44,12 +43,10 @@ static BOOL callerInServer(uintptr_t retAddr) {
 // -----------------------------------------------------------------------------
 // Hooked recv: nur bei Aufrufen aus server.dll unsere Logik
 int WINAPI hook_recv(SOCKET s, char *buf, int len, int flags) {
-    // lazy init server.dll range
     initServerModuleRange();
     if (!serverBase) {
         return real_recv(s, buf, len, flags);
     }
-    // Rücksprung-Adresse ermitteln
     CONTEXT ctx = {0}; 
     ctx.ContextFlags = CONTEXT_CONTROL;
     RtlCaptureContext(&ctx);
@@ -59,25 +56,30 @@ int WINAPI hook_recv(SOCKET s, char *buf, int len, int flags) {
     uintptr_t ret = ctx.Rip;
 #endif
     if (!callerInServer(ret)) {
-        // nicht aus server.dll: direkt weiterreichen
         return real_recv(s, buf, len, flags);
     }
 
-    LOG("[HOOK] recv from server.dll socket=%u len=%d flags=0x%X\n",
-        (unsigned)s, len, flags);
+    // Nur loggen, wenn Paketlänge > 3
+    if (len > 3) {
+        LOG("[HOOK] recv from server.dll socket=%u len=%d flags=0x%X\n",
+            (unsigned)s, len, flags);
+    }
 
     int result = real_recv(s, buf, len, flags);
     if (result == SOCKET_ERROR && WSAGetLastError() == WSAEWOULDBLOCK) {
-        LOG("[HOOK] swallow WSAEWOULDBLOCK -> return 0\n");
+        if (len > 3) {
+            LOG("[HOOK] swallow WSAEWOULDBLOCK -> return 0\n");
+        }
         return 0;
     }
-    LOG("[HOOK] recv -> %d\n", result);
+    if (len > 3) {
+        LOG("[HOOK] recv -> %d\n", result);
+    }
     return result;
 }
 
 // Hooked send: nur bei server.dll-Aufrufen retry bei WSAEWOULDBLOCK
 int WINAPI hook_send(SOCKET s, const char *buf, int len, int flags) {
-    // lazy init server.dll range
     initServerModuleRange();
     if (!serverBase) {
         return real_send(s, buf, len, flags);
@@ -94,8 +96,11 @@ int WINAPI hook_send(SOCKET s, const char *buf, int len, int flags) {
         return real_send(s, buf, len, flags);
     }
 
-    LOG("[HOOK] send to server.dll socket=%u len=%d flags=0x%X\n",
-        (unsigned)s, len, flags);
+    // Nur loggen, wenn Paketlänge > 3
+    if (len > 3) {
+        LOG("[HOOK] send to server.dll socket=%u len=%d flags=0x%X\n",
+            (unsigned)s, len, flags);
+    }
 
     int total = 0;
     while (total < len) {
@@ -106,12 +111,16 @@ int WINAPI hook_send(SOCKET s, const char *buf, int len, int flags) {
                 Sleep(1);
                 continue;
             }
-            LOG("[HOOK] send error %d\n", err);
+            if (len > 3) {
+                LOG("[HOOK] send error %d\n", err);
+            }
             return SOCKET_ERROR;
         }
         total += sent;
     }
-    LOG("[HOOK] send total=%d\n", total);
+    if (len > 3) {
+        LOG("[HOOK] send total=%d\n", total);
+    }
     return total;
 }
 
