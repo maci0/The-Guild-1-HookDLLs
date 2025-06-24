@@ -9,7 +9,7 @@ flowchart TD
     end
 
     subgraph Injector
-        injector --> loadServer["Load patched server.dll"]
+        injector --> loadServer["Load server.dll"]
         injector --> loadHooks["Inject hook DLLs"]
         injector --> resume["Resume process (if newly created)"]
     end
