@@ -186,6 +186,11 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD reason, LPVOID _) {
 
         // echte ws2_32.dll laden
         HMODULE hWs = LoadLibraryW(L"ws2_32.dll");
+        if (!hWs) {
+            LOG("[HOOK] LoadLibraryW failed\n");
+            LOG("[HOOK] Aborting initialization\n");
+            return FALSE;
+        }
         real_recv = (void*)GetProcAddress(hWs, "recv");
         real_send = (void*)GetProcAddress(hWs, "send");
 
