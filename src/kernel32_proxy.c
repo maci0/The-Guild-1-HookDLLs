@@ -3,7 +3,9 @@
 #include <stdint.h>
 #include <stdio.h>
 #include "MinHook.h"
+#ifdef _MSC_VER
 #pragma comment(lib, "MinHook.x86.lib")
+#endif
 
 // Funktionszeiger für das Original
 typedef DWORD (WINAPI *GetTickCount_t)(void);
@@ -18,7 +20,7 @@ DWORD WINAPI hook_GetTickCount(void) {
     CONTEXT ctx = {0};
     ctx.ContextFlags = CONTEXT_CONTROL;
     RtlCaptureContext(&ctx);
-#ifdef _M_IX86
+#if defined(_M_IX86) || defined(__i386__)
     DWORD retAddr = ctx.Eip;
 #else
     DWORD retAddr = 0;

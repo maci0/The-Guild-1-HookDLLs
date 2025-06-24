@@ -11,11 +11,13 @@
 #include <stdio.h>
 #include "MinHook.h"
 
+#ifdef _MSC_VER
 #pragma comment(lib, "MinHook.x86.lib")
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "Psapi.lib")
 #pragma comment(lib, "Shlwapi.lib")
 #pragma comment(lib, "legacy_stdio_definitions.lib")  // für _snprintf_s
+#endif
 
 // -----------------------------------------------------------------------------
 // Logging mit Zeilenzähler und Roll-Over
@@ -88,7 +90,7 @@ int WINAPI hook_recv(SOCKET s, char *buf, int len, int flags) {
     CONTEXT ctx = {0}; 
     ctx.ContextFlags = CONTEXT_CONTROL;
     RtlCaptureContext(&ctx);
-#ifdef _M_IX86
+#if defined(_M_IX86) || defined(__i386__)
     uintptr_t ret = ctx.Eip;
 #else
     uintptr_t ret = ctx.Rip;
@@ -120,7 +122,7 @@ int WINAPI hook_send(SOCKET s, const char *buf, int len, int flags) {
     CONTEXT ctx = {0}; 
     ctx.ContextFlags = CONTEXT_CONTROL;
     RtlCaptureContext(&ctx);
-#ifdef _M_IX86
+#if defined(_M_IX86) || defined(__i386__)
     uintptr_t ret = ctx.Eip;
 #else
     uintptr_t ret = ctx.Rip;
