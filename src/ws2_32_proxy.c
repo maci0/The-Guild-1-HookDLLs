@@ -11,11 +11,13 @@
 #include <stdio.h>
 #include "MinHook.h"
 
+#ifdef _MSC_VER
 #pragma comment(lib, "MinHook.x86.lib")
 #pragma comment(lib, "Ws2_32.lib")
 #pragma comment(lib, "Psapi.lib")
 #pragma comment(lib, "Shlwapi.lib")
 #pragma comment(lib, "legacy_stdio_definitions.lib")  // für _snprintf_s
+#endif
 
 // -----------------------------------------------------------------------------
 // Logging mit Zeilenzähler und Roll-Over
@@ -88,7 +90,7 @@ int WINAPI hook_recv(SOCKET s, char *buf, int len, int flags) {
     CONTEXT ctx = {0}; 
     ctx.ContextFlags = CONTEXT_CONTROL;
     RtlCaptureContext(&ctx);
-#ifdef _M_IX86
+#if defined(_M_IX86) || defined(__i386__)
     uintptr_t ret = ctx.Eip;
 #else
     uintptr_t ret = ctx.Rip;
@@ -103,7 +105,9 @@ int WINAPI hook_recv(SOCKET s, char *buf, int len, int flags) {
 
     int result = real_recv(s, buf, len, flags);
     if (result == SOCKET_ERROR && WSAGetLastError() == WSAEWOULDBLOCK) {
+        // swallow WSAEWOULDBLOCK and clear the error so callers don't see it
         LOG("[HOOK] swallow WSAEWOULDBLOCK -> return 0\n");
+        WSASetLastError(NO_ERROR);
         return 0;
     }
     LOG("[HOOK] recv -> %d\n", result);
@@ -120,7 +124,7 @@ int WINAPI hook_send(SOCKET s, const char *buf, int len, int flags) {
     CONTEXT ctx = {0}; 
     ctx.ContextFlags = CONTEXT_CONTROL;
     RtlCaptureContext(&ctx);
-#ifdef _M_IX86
+#if defined(_M_IX86) || defined(__i386__)
     uintptr_t ret = ctx.Eip;
 #else
     uintptr_t ret = ctx.Rip;
@@ -142,6 +146,7 @@ int WINAPI hook_send(SOCKET s, const char *buf, int len, int flags) {
                 continue;
             }
             LOG("[HOOK] send error %d\n", err);
+            WSASetLastError(err);
             return SOCKET_ERROR;
         }
         total += sent;
@@ -181,6 +186,11 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD reason, LPVOID _) {
 
         // echte ws2_32.dll laden
         HMODULE hWs = LoadLibraryW(L"ws2_32.dll");
+        if (!hWs) {
+            LOG("[HOOK] LoadLibraryW failed\n");
+            LOG("[HOOK] Aborting initialization\n");
+            return FALSE;
+        }
         real_recv = (void*)GetProcAddress(hWs, "recv");
         real_send = (void*)GetProcAddress(hWs, "send");
 
