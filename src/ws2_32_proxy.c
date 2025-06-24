@@ -105,7 +105,9 @@ int WINAPI hook_recv(SOCKET s, char *buf, int len, int flags) {
 
     int result = real_recv(s, buf, len, flags);
     if (result == SOCKET_ERROR && WSAGetLastError() == WSAEWOULDBLOCK) {
+        // swallow WSAEWOULDBLOCK and clear the error so callers don't see it
         LOG("[HOOK] swallow WSAEWOULDBLOCK -> return 0\n");
+        WSASetLastError(NO_ERROR);
         return 0;
     }
     LOG("[HOOK] recv -> %d\n", result);
