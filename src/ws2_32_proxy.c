@@ -144,6 +144,7 @@ int WINAPI hook_send(SOCKET s, const char *buf, int len, int flags) {
                 continue;
             }
             LOG("[HOOK] send error %d\n", err);
+            WSASetLastError(err);
             return SOCKET_ERROR;
         }
         total += sent;
