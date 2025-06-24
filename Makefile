@@ -1,84 +1,112 @@
-# Cross-compilation target for Windows 32-bit
-TARGET = x86-windows-gnu
+# ---------------------
+# Build Configuration
+# ---------------------
+TARGET          = x86-windows-gnu
+CC              = zig cc -target $(TARGET)
+AR              = zig ar
+CFLAGS         += -Wall -O2 -fno-stack-protector
 
-# C compiler to use (Zig acting as a C compiler)
-CC = zig cc -target $(TARGET)
+# ---------------------
+# Directories
+# ---------------------
+SRC_DIR         = src
+BUILD_DIR       = build
+RELEASE_DIR     = release
 
-# Archiver to use (Zig acting as `ar`)
-AR = zig ar
+MINHOOK_DIR     = vendor/minhook
+MINHOOK_SRC     = $(MINHOOK_DIR)/src
+MINHOOK_INC     = $(MINHOOK_DIR)/include
+MINHOOK_LIB     = $(MINHOOK_DIR)/libminhook.a
 
-# Compiler flags
-CFLAGS = -Wall -O2 -fno-stack-protector
+CFLAGS         += -I$(MINHOOK_INC)
 
-# MinHook paths
-MINHOOK_DIR = vendor/minhook
-MINHOOK_SRC = $(MINHOOK_DIR)/src
-MINHOOK_INC = $(MINHOOK_DIR)/include
-MINHOOK_LIB = $(MINHOOK_DIR)/libminhook.a
-CFLAGS += -I$(MINHOOK_INC)
+# ---------------------
+# Source & Target Files
+# ---------------------
+INJECTOR_SRC    = $(SRC_DIR)/injector.c
+INJECTOR_EXE    = $(BUILD_DIR)/injector.exe
 
-# Source files
-SRC_DIR = src
-BUILD_DIR = build
-RELEASE_DIR = release
+DLL_NAMES       = kernel32 server ws2_32
+DLL_SRCS        = $(addprefix $(SRC_DIR)/,$(addsuffix _proxy.c,$(DLL_NAMES)))
+DLL_TARGETS     = $(addprefix $(BUILD_DIR)/hook_,$(addsuffix .dll,$(DLL_NAMES)))
 
-INJECTOR_SRC = $(SRC_DIR)/injector.c
-INJECTOR_EXE = $(BUILD_DIR)/injector.exe
+MINHOOK_SRCS    = \
+	$(MINHOOK_SRC)/buffer.c \
+	$(MINHOOK_SRC)/hde/hde32.c \
+	$(MINHOOK_SRC)/hde/hde64.c \
+	$(MINHOOK_SRC)/hook.c \
+	$(MINHOOK_SRC)/trampoline.c
 
-KERNEL32_SRC = $(SRC_DIR)/kernel32_proxy.c
-KERNEL32_DLL = $(BUILD_DIR)/hook_kernel32.dll
+MINHOOK_OBJECTS = $(addprefix $(BUILD_DIR)/,$(notdir $(MINHOOK_SRCS:.c=.o)))
 
-SERVER_SRC = $(SRC_DIR)/server_proxy.c
-SERVER_DLL = $(BUILD_DIR)/hook_server.dll
+# ---------------------
+# Default Target
+# ---------------------
+all: submodule $(INJECTOR_EXE) $(DLL_TARGETS)
 
-WS2_32_SRC = $(SRC_DIR)/ws2_32_proxy.c
-WS2_32_DLL = $(BUILD_DIR)/hook_ws2_32.dll
+# ---------------------
+# MinHook Static Library
+# ---------------------
+$(MINHOOK_LIB): $(MINHOOK_OBJECTS)
+	@echo "Building MinHook static library..."
+	$(AR) -rcs $@ $^
 
-# Ensure submodule is initialized and up to date
-submodule:
-	@git submodule update --init --recursive
+$(BUILD_DIR)/%.o: $(MINHOOK_SRC)/%.c
+	@mkdir -p $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
 
-# Default target
-all: submodule $(INJECTOR_EXE) $(KERNEL32_DLL) $(SERVER_DLL) $(WS2_32_DLL)
+# hde sources compiled flat into BUILD_DIR
+$(BUILD_DIR)/hde32.o: $(MINHOOK_SRC)/hde/hde32.c
+	@mkdir -p $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
 
-# Rule to build the injector
+$(BUILD_DIR)/hde64.o: $(MINHOOK_SRC)/hde/hde64.c
+	@mkdir -p $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# ---------------------
+# Injector Executable
+# ---------------------
 $(INJECTOR_EXE): $(INJECTOR_SRC)
 	@echo "Compiling $< -> $@"
 	@mkdir -p $(BUILD_DIR)
 	$(CC) $(CFLAGS) -o $@ $<
 
-# Rule to build MinHook static library
-$(MINHOOK_LIB):
-	@echo "Building MinHook static library..."
-	$(CC) $(CFLAGS) -c $(MINHOOK_SRC)/buffer.c -o buffer.o
-	$(CC) $(CFLAGS) -c $(MINHOOK_SRC)/hde/hde32.c -o hde32.o
-	$(CC) $(CFLAGS) -c $(MINHOOK_SRC)/hde/hde64.c -o hde64.o
-	$(CC) $(CFLAGS) -c $(MINHOOK_SRC)/hook.c -o hook.o
-	$(CC) $(CFLAGS) -c $(MINHOOK_SRC)/trampoline.c -o trampoline.o
-	$(AR) -rcs $(MINHOOK_LIB) buffer.o hde32.o hde64.o hook.o trampoline.o
-	rm buffer.o hde32.o hde64.o hook.o trampoline.o
-
-# Generic rule to build DLLs
+# ---------------------
+# Proxies DLLs
+# ---------------------
 $(BUILD_DIR)/hook_%.dll: $(SRC_DIR)/%_proxy.c $(MINHOOK_LIB)
 	@echo "Compiling $< -> $@"
 	@mkdir -p $(BUILD_DIR)
 	$(CC) $(CFLAGS) -shared -o $@ $< $(MINHOOK_LIB) -lshlwapi -lws2_32
 
-# Copy artifacts to the release directory
+# ---------------------
+# Submodule Init
+# ---------------------
+submodule:
+	@git submodule update --init --recursive
+
+# ---------------------
+# Install Artifacts
+# ---------------------
 install: all
 	@echo "Installing artifacts to $(RELEASE_DIR)..."
+	@mkdir -p $(RELEASE_DIR) $(RELEASE_DIR)/Server
 	@cp $(INJECTOR_EXE) $(RELEASE_DIR)/
-	@mkdir -p $(RELEASE_DIR)/Server
 	@cp $(BUILD_DIR)/hook_*.dll $(RELEASE_DIR)/Server/
 	@echo "Installation complete."
 
-# Create a distributable zip file
+# ---------------------
+# Package as Zip
+# ---------------------
 package: install
 	@echo "Packaging release into The-Guild-1-HookDLLs.zip..."
 	@cd $(RELEASE_DIR) && zip -r ../The-Guild-1-HookDLLs.zip .
 	@echo "Packaging complete."
 
-# Clean build artifacts
+# ---------------------
+# Cleanup
+# ---------------------
 clean:
 	@echo "Cleaning build artifacts..."
 	@rm -rf $(BUILD_DIR)
@@ -87,4 +115,8 @@ clean:
 	@rm -f The-Guild-1-HookDLLs.zip
 	@echo "Clean complete."
 
-.PHONY: all clean install package submodule 
+# ---------------------
+# Meta
+# ---------------------
+.PHONY: all clean install package submodule
+.DELETE_ON_ERROR:
