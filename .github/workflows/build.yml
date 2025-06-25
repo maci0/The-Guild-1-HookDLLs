@@ -36,3 +36,11 @@ jobs:
         with:
           name: build-artifacts
           path: The-Guild-1-HookDLLs-x86-windows-gnu.zip
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: latest
+          name: Latest Build
+          files: The-Guild-1-HookDLLs-x86-windows-gnu.zip
