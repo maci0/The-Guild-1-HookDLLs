@@ -84,23 +84,20 @@ This project was created to fix those issues by intercepting and patching the pr
    - Unzip this file. Inside the `release/` directory, you'll find the DLLs and the injector executable.
 
 2. **Prepare the game:**
-   - Make a backup of your original `kernel32.dll` and `ws2_32.dll` in the game directory (if present).
-   - Place the built proxy DLLs (`hook_kernel32.dll`, `hook_ws2_32.dll`, etc.) into the game directory, renaming them to match the original DLL names if you want to directly replace them, or use them as side-loaded hooks.
+   - Make a backup of your previous `hook_kernel32.dll` and `hook_ws2_32.dll` in the game server directory (if present).
+   - Place the built proxy DLLs (`hook_kernel32.dll`, `hook_ws2_32.dll`, etc.) into the game server directory.
 
 3. **Using the Injector:**
-   - Run `injector.exe` with the path to the game executable and the DLLs you want to inject. For example:
+   - Run `injector.exe` (recommended in the game dircetory) with the PID of the gane exe and the pathes to the DLLs you want to inject. If starting the injector in the game directory, for example:
      ```sh
-     injector.exe "C:\Path\To\Guild.exe" hook_server.dll hook_ws2_32.dll hook_kernel32.dll
+     injector.exe PIDofExe server/hook_server.dll server/hook_ws2_32.dll server/hook_kernel32.dll
      ```
    - The injector can also attach to a running process by PID if needed.
+   - It is recommended to use the provided bat files due to conveniene reasons
 
 4. **Start the game:**
-   - Launch the game as usual, or use the injector to start it in a suspended state and inject the hooks before resuming.
-
-**Note:**
-- Some anti-cheat or DRM systems may detect DLL injection as suspicious. Use responsibly and always keep backups of original game files.
-- For advanced usage (e.g., custom exports, debugging), refer to the `.def` files in `docs/` and adjust your build or injection process as needed.
-- If you encounter issues, simply remove the DLLs and injector to restore the original game state.
+   - Place the bat file and injector exe in the game dir and execute the bat file with admin rights
+   - Launch the game as usual to get PID and use the injector as described above.
 
 ## More background
 - The multiplayer instability in The Guild 1 is due to the lack of packet loss handling in the original `server.dll`.
