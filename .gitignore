@@ -4,12 +4,4 @@ build/
 *.lib
 *.exp
 bin/
-
-# VSCode
-.vscode/
-c_cpp_properties.json
-launch.json
-
-# Do NOT ignore the original server.dll in release/server/
-!release/Server/server.dll
-
+*.zip

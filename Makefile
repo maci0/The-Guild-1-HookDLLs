@@ -94,7 +94,7 @@ package: all
 
 	@cp $(INJECTOR_EXE) .ziproot/$(ZIP_ROOT_DIR)
 	@cp $(DLL_TARGETS) .ziproot/$(ZIP_ROOT_DIR)/Server
-	@cp release/release/*.bat .ziproot/$(ZIP_ROOT_DIR)
+	@cp dist/*.bat .ziproot/$(ZIP_ROOT_DIR)
 
 	@cd .ziproot && zip -r ../$(ZIP_NAME) $(ZIP_ROOT_DIR)
 
