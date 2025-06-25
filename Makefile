@@ -86,7 +86,7 @@ submodule:
 ZIP_ROOT_DIR    := The-Guild-1-HookDLLs-$(TARGET)
 ZIP_NAME	:= $(ZIP_ROOT_DIR).zip
 package: all
-	@echo "Packaging release into The-Guild-1-HookDLLs.zip..."
+	@echo "Packaging release into $(ZIP_NAME)..."
 	@rm -f $(ZIP_NAME)
 	@rm -rf .ziproot
 
