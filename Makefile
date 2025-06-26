@@ -3,24 +3,24 @@ dummy := $(shell git submodule update --init --recursive)
 # ---------------------
 # Build Configuration
 # ---------------------
-TARGET          = x86-windows-gnu
-CC              = zig cc -target $(TARGET)
-AR              = zig ar
-CFLAGS         += -Wall -O2 -fno-stack-protector
+TARGET	  = x86-windows-gnu
+CC	      = zig cc -target $(TARGET)
+AR	      = zig ar
+CFLAGS	  += -Wall -O2 -fno-stack-protector
 
 # ---------------------
 # Directories
 # ---------------------
-SRC_DIR         = src
+SRC_DIR	 = src
 BUILD_DIR       = build
-RELEASE_DIR     = release
+# RELEASE_DIR is no longer needed at all, removed.
 
 MINHOOK_DIR     = vendor/minhook
 MINHOOK_SRC     = $(MINHOOK_DIR)/src
 MINHOOK_INC     = $(MINHOOK_DIR)/include
 MINHOOK_LIB     = $(MINHOOK_DIR)/libminhook.lib
 
-CFLAGS         += -I$(MINHOOK_INC)
+CFLAGS	  += -I$(MINHOOK_INC)
 
 # ---------------------
 # Source & Target Files
@@ -29,7 +29,7 @@ INJECTOR_SRC    = $(SRC_DIR)/injector.c
 INJECTOR_EXE    = $(BUILD_DIR)/injector.exe
 
 DLL_NAMES       = kernel32 server ws2_32
-DLL_SRCS        = $(addprefix $(SRC_DIR)/,$(addsuffix _proxy.c,$(DLL_NAMES)))
+DLL_SRCS	= $(addprefix $(SRC_DIR)/,$(addsuffix _proxy.c,$(DLL_NAMES)))
 DLL_TARGETS     = $(addprefix $(BUILD_DIR)/hook_,$(addsuffix .dll,$(DLL_NAMES)))
 
 MINHOOK_SRCS    = \
@@ -79,22 +79,27 @@ $(BUILD_DIR)/hook_%.dll: $(SRC_DIR)/%_proxy.c $(MINHOOK_LIB)
 submodule:
 	@git submodule update --init --recursive
 
-# ---------------------
-# Install Artifacts
-# ---------------------
-install: all
-	@echo "Installing artifacts to $(RELEASE_DIR)..."
-	@mkdir -p $(RELEASE_DIR) $(RELEASE_DIR)/Server
-	@cp $(INJECTOR_EXE) $(RELEASE_DIR)/
-	@cp $(BUILD_DIR)/hook_*.dll $(RELEASE_DIR)/Server/
-	@echo "Installation complete."
 
 # ---------------------
 # Package as Zip
 # ---------------------
-package: install
-	@echo "Packaging release into The-Guild-1-HookDLLs.zip..."
-	@cd $(RELEASE_DIR) && zip -r ../The-Guild-1-HookDLLs.zip .
+ZIP_ROOT_DIR    := The-Guild-1-HookDLLs-$(TARGET)
+ZIP_NAME	:= $(ZIP_ROOT_DIR).zip
+package: all
+	@echo "Packaging release into $(ZIP_NAME)..."
+	@rm -f $(ZIP_NAME)
+	@rm -rf .ziproot
+
+	@mkdir -p .ziproot/$(ZIP_ROOT_DIR)/Server
+
+	@cp $(INJECTOR_EXE) .ziproot/$(ZIP_ROOT_DIR)
+	@cp $(DLL_TARGETS) .ziproot/$(ZIP_ROOT_DIR)/Server
+	@cp dist/*.bat .ziproot/$(ZIP_ROOT_DIR)
+
+	@cd .ziproot && zip -r ../$(ZIP_NAME) $(ZIP_ROOT_DIR)
+
+	# Cleanup
+	@rm -rf .ziproot
 	@echo "Packaging complete."
 
 # ---------------------
@@ -103,14 +108,13 @@ package: install
 clean:
 	@echo "Cleaning build artifacts..."
 	@rm -rf $(BUILD_DIR)
-	@rm -f $(RELEASE_DIR)/injector.exe
-	@rm -f $(RELEASE_DIR)/Server/hook_*.dll
 	@rm -f $(MINHOOK_DIR)/libminhook.lib
-	@rm -f The-Guild-1-HookDLLs.zip
+	@rm -f $(ZIP_NAME)
+	@rm -rf .ziproot
 	@echo "Clean complete."
 
 # ---------------------
 # Meta
 # ---------------------
-.PHONY: all clean install package submodule
+.PHONY: all clean package submodule
 .DELETE_ON_ERROR:
